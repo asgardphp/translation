@@ -1,25 +1,25 @@
 <?php
-namespace Asgard\Translation\Commands;
+namespace Asgard\Translation\Command;
 
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Input\InputArgument;
 
 /**
- * Translation yaml export command.
+ * Transltion csv export command.
  * @author Michel Hognerud <michel@hognerud.com>
  */
-class ExportYamlCommand extends \Asgard\Console\Command {
+class ExportCsvCommand extends \Asgard\Console\Command {
 	/**
 	 * {@inheritDoc}
 	 */
-	protected $name = 'translation:export-yaml';
+	protected $name = 'translation:export-csv';
 	/**
 	 * {@inheritDoc}
 	 */
-	protected $description = 'Export new translations to a YAML file.';
+	protected $description = 'Export new translations to a CSV file.';
 	/**
-	 * Translation dependency.
+	 * Translator dependency.
 	 * @var \Asgard\Translation\Translation
 	 */
 	protected $translation;
@@ -45,6 +45,8 @@ class ExportYamlCommand extends \Asgard\Console\Command {
 		$dstLocale = $this->input->getArgument('dstLocale');
 		$file = $this->input->getArgument('file');
 
+		$container = $this->getContainer();
+
 		$this->translation->load($srcLocale);
 		$this->translation->load($dstLocale);
 
@@ -56,14 +58,19 @@ class ExportYamlCommand extends \Asgard\Console\Command {
 		foreach($this->directories as $dir)
 			$e->parseDirectory($dir);
 
-		$res = $e->getList($this->translation->getTranslator(), $dstLocale);
+		$res = $e->getListWithTranslation($this->translation->getTranslator(), $srcLocale, $dstLocale);
 
 		if(!$res)
 			$this->comment('No translations to export.');
 		else {
-			$dumper = new \Symfony\Component\Yaml\Dumper;
-			$yaml = $dumper->dump($res, 1);
-			file_put_contents($file, $yaml);
+			$csv = new \H0gar\Csv\Csv([
+				'Key',
+				'Source',
+				'Translation'
+			]);
+			foreach($res as $r)
+				$csv->add($r);
+			file_put_contents($file, $csv->render());
 
 			$this->info('Translations exported with success.');
 		}
